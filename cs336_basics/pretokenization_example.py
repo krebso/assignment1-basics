@@ -53,7 +53,7 @@ def find_chunk_boundaries(
 # with open(..., "rb") as f:
 #     num_processes = 4
 #     boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
-# 
+#
 #     # The following is a serial implementation, but you can parallelize this
 #     # by sending each start/end pair to a set of processes.
 #     for start, end in zip(boundaries[:-1], boundaries[1:]):

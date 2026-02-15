@@ -6,6 +6,7 @@ from torch.nn import Module, Parameter
 
 from einops import einsum
 
+
 @final
 class Linear(Module):
     def __init__(

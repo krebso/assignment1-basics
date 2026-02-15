@@ -9,5 +9,3 @@ if __name__ == "__main__":
     vocab, merges = train_bpe(file_path, vocab_size, [special_token])
     pickle.dump(vocab, open("owt_vocab.json", "wb"))
     pickle.dump(merges, open("owt_merges.json", "wb"))
-
-

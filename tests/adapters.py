@@ -42,8 +42,6 @@ def run_linear(
     return layer.forward(in_features)
 
 
-
-
 def run_embedding(
     vocab_size: int,
     d_model: int,
@@ -100,11 +98,13 @@ def run_swiglu(
     # swiglu.w3.weight.data = w3_weight
 
     swiglu = SwiGLU(d_model)
-    swiglu.load_state_dict({
-        "w1": w1_weight,
-        "w2": w2_weight,
-        "w3": w3_weight,
-    })
+    swiglu.load_state_dict(
+        {
+            "w1": w1_weight,
+            "w2": w2_weight,
+            "w3": w3_weight,
+        }
+    )
     return swiglu.forward(in_features)
 
 
