@@ -16,7 +16,9 @@ from cs336_basics.tokenizer import Tokenizer
 from cs336_basics.rmsnorm import RMSNorm
 from cs336_basics.positionwise_feedforward import SwiGLU
 from cs336_basics.rope import RotaryPositionalEmbedding
-from cs336_basics.softmax import Softmax
+from cs336_basics.softmax import softmax
+from cs336_basics.scaled_dot_product_attention import scaled_dot_product_attention
+from cs336_basics.masked_self_attention import MultiheadSelfAttention
 
 
 def run_linear(
@@ -127,7 +129,7 @@ def run_scaled_dot_product_attention(
     Returns:
         Float[Tensor, " ... queries d_v"]: Output of SDPA
     """
-    raise NotImplementedError
+    return scaled_dot_product_attention(Q, K, V, mask)
 
 
 def run_multihead_self_attention(
@@ -161,7 +163,14 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    mha = MultiheadSelfAttention(d_model, num_heads)
+    mha.load_state_dict({
+        "Q": q_proj_weight,
+        "K": k_proj_weight,
+        "V": v_proj_weight,
+        "O": o_proj_weight,
+    })
+    return mha.forward(in_features)
 
 
 def run_multihead_self_attention_with_rope(
@@ -201,7 +210,14 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    mha = MultiheadSelfAttention(d_model, num_heads, theta, max_seq_len)
+    mha.load_state_dict({
+        "Q": q_proj_weight,
+        "K": k_proj_weight,
+        "V": v_proj_weight,
+        "O": o_proj_weight,
+    })
+    return mha.forward(in_features, token_positions)
 
 
 def run_rope(
@@ -457,7 +473,6 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
         Float[Tensor, "..."]: Tensor of with the same shape as `in_features` with the output of
         softmax normalizing the specified `dim`.
     """
-    softmax = Softmax()
     return softmax.forward(in_features, dim)
 
 
