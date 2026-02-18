@@ -19,6 +19,8 @@ from cs336_basics.rope import RotaryPositionalEmbedding
 from cs336_basics.softmax import softmax
 from cs336_basics.scaled_dot_product_attention import scaled_dot_product_attention
 from cs336_basics.masked_self_attention import MultiheadSelfAttention
+from cs336_basics.transformer_block import TransformerBlock
+from cs336_basics.llm import Transformer
 
 
 def run_linear(
@@ -164,12 +166,14 @@ def run_multihead_self_attention(
         implementation with the given QKV projection weights and input features.
     """
     mha = MultiheadSelfAttention(d_model, num_heads)
-    mha.load_state_dict({
-        "Q": q_proj_weight,
-        "K": k_proj_weight,
-        "V": v_proj_weight,
-        "O": o_proj_weight,
-    })
+    mha.load_state_dict(
+        {
+            "Q": q_proj_weight,
+            "K": k_proj_weight,
+            "V": v_proj_weight,
+            "O": o_proj_weight,
+        }
+    )
     return mha.forward(in_features)
 
 
@@ -211,12 +215,14 @@ def run_multihead_self_attention_with_rope(
         implementation with the given QKV projection weights and input features.
     """
     mha = MultiheadSelfAttention(d_model, num_heads, theta, max_seq_len)
-    mha.load_state_dict({
-        "Q": q_proj_weight,
-        "K": k_proj_weight,
-        "V": v_proj_weight,
-        "O": o_proj_weight,
-    })
+    mha.load_state_dict(
+        {
+            "Q": q_proj_weight,
+            "K": k_proj_weight,
+            "V": v_proj_weight,
+            "O": o_proj_weight,
+        }
+    )
     return mha.forward(in_features, token_positions)
 
 
@@ -313,7 +319,28 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    block = TransformerBlock(d_model, num_heads, d_ff, theta, max_seq_len)
+    block.rmsnorm_mha.load_state_dict({"g": weights["ln1.weight"]})
+    block.rmsnorm_ff.load_state_dict({"g": weights["ln2.weight"]})
+    block.mha.load_state_dict(
+        {
+            "Q": weights["attn.q_proj.weight"],
+            "K": weights["attn.k_proj.weight"],
+            "V": weights["attn.v_proj.weight"],
+            "O": weights["attn.output_proj.weight"],
+        }
+    )
+    block.ff.load_state_dict(
+        {
+            "w1": weights["ffn.w1.weight"],
+            "w2": weights["ffn.w2.weight"],
+            "w3": weights["ffn.w3.weight"],
+        }
+    )
+    print(in_features.dtype)
+    out = block.forward(in_features)
+    print(out.dtype)
+    return out
 
 
 def run_transformer_lm(
@@ -395,7 +422,32 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    llm = Transformer(vocab_size, context_length, d_model, num_layers, num_heads, d_ff, rope_theta)
+    llm.emb.load_state_dict({"e": weights["token_embeddings.weight"]})
+
+    for i, block in enumerate(llm.blocks):
+        block.rmsnorm_mha.load_state_dict({"g": weights[f"layers.{i}.ln1.weight"]})
+        block.rmsnorm_ff.load_state_dict({"g": weights[f"layers.{i}.ln2.weight"]})
+        block.mha.load_state_dict(
+            {
+                "Q": weights[f"layers.{i}.attn.q_proj.weight"],
+                "K": weights[f"layers.{i}.attn.k_proj.weight"],
+                "V": weights[f"layers.{i}.attn.v_proj.weight"],
+                "O": weights[f"layers.{i}.attn.output_proj.weight"],
+            }
+        )
+        block.ff.load_state_dict(
+            {
+                "w1": weights[f"layers.{i}.ffn.w1.weight"],
+                "w2": weights[f"layers.{i}.ffn.w2.weight"],
+                "w3": weights[f"layers.{i}.ffn.w3.weight"],
+            }
+        )
+
+    llm.norm.load_state_dict({"g": weights["ln_final.weight"]})
+    llm.linear.load_state_dict({"w": weights["lm_head.weight"]})
+
+    return llm.forward(in_indices)
 
 
 def run_rmsnorm(
@@ -473,7 +525,7 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
         Float[Tensor, "..."]: Tensor of with the same shape as `in_features` with the output of
         softmax normalizing the specified `dim`.
     """
-    return softmax.forward(in_features, dim)
+    return softmax(in_features, dim)
 
 
 def run_cross_entropy(
