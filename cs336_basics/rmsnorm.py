@@ -10,10 +10,11 @@ class RMSNorm(Module):
         self, d_model: int, eps: float = 1e-5, device: torch.device | None = None, dtype: torch.dtype | None = None
     ) -> None:
         super().__init__()
+
         self.d_model = d_model
         self.eps = eps
-        g = torch.ones(self.d_model)
-        self.g = Parameter(g)
+
+        self.g = Parameter(torch.ones(self.d_model))
 
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -21,7 +22,7 @@ class RMSNorm(Module):
         upcast_x = x.to(torch.float32)
 
         sum = reduce(torch.square(upcast_x), "... in_features -> ... 1", "sum")
-        rms = torch.sqrt((sum + self.eps) / self.d_model)
+        rms = torch.sqrt((sum / self.d_model) + self.eps)
         mul = einsum(upcast_x, self.g, "... in_features, in_features -> ... in_features")
 
         return (mul / rms).to(in_dtype)
