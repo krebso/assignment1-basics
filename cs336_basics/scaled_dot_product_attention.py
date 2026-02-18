@@ -1,4 +1,4 @@
-import torch 
+import torch
 
 from math import sqrt
 

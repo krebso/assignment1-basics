@@ -10,12 +10,12 @@ from einops import einsum
 
 @final
 class SwiGLU(Module):
-    def __init__(self, d_model: int) -> None:
+    def __init__(self, d_model: int, d_ff: int | None = None) -> None:
         super().__init__()
 
         self.d_model = d_model
 
-        self.d_ff = 64 * int(8 / 3 * self.d_model / 64)
+        self.d_ff = d_ff if d_ff is not None else 64 * int(8 / 3 * self.d_model / 64)
 
         # assert self.d_ff % 64 == 0, self.d_ff
 

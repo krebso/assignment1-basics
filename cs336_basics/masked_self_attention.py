@@ -8,8 +8,11 @@ from einops import rearrange, einsum
 from cs336_basics.scaled_dot_product_attention import scaled_dot_product_attention
 from cs336_basics.rope import RotaryPositionalEmbedding
 
+
 class MultiheadSelfAttention(Module):
-    def __init__(self, d_model: int, num_heads: int, theta: float | None = None, max_seq_len: int | None = None) -> None:
+    def __init__(
+        self, d_model: int, num_heads: int, theta: float | None = None, max_seq_len: int | None = None
+    ) -> None:
         super().__init__()
         Q = torch.empty([d_model, d_model])
         K = torch.empty([d_model, d_model])
@@ -35,19 +38,18 @@ class MultiheadSelfAttention(Module):
         k = einsum(self.K, x, "dm dm2, ... sl dm2 -> ... sl dm")
         v = einsum(self.V, x, "dm dm2, ... sl dm2 -> ... sl dm")
 
-        q = rearrange(q, "... sl (h dk) -> ... h sl dk", h=self.num_heads)
-        k = rearrange(k, "... sl (h dk) -> ... h sl dk", h=self.num_heads)
-        v = rearrange(v, "... sl (h dk) -> ... h sl dk", h=self.num_heads)
+        q = rearrange(q, "... sl (num_heads d_k) -> ... num_heads sl d_k", num_heads=self.num_heads)
+        k = rearrange(k, "... sl (num_heads d_k) -> ... num_heads sl d_k", num_heads=self.num_heads)
+        v = rearrange(v, "... sl (num_heads d_k) -> ... num_heads sl d_k", num_heads=self.num_heads)
 
         mask = torch.ones([sl, sl]).tril().to(torch.bool)
 
-        if self.rope is not None and token_positions is not None:
+        if self.rope is not None:
+            if token_positions is None:
+                token_positions = torch.arange(sl, device=x.device)
             q = self.rope.forward(q, token_positions)
             k = self.rope.forward(k, token_positions)
 
-        o = rearrange(
-            scaled_dot_product_attention(q, k, v, mask),
-            "... h sl dk -> ... sl (h dk)"
-        )
+        o = rearrange(scaled_dot_product_attention(q, k, v, mask), "... h sl dk -> ... sl (h dk)")
 
         return einsum(self.O, o, "... dm dm2, ... sl dm2 -> ... sl dm")
