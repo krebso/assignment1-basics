@@ -11,7 +11,7 @@ def cross_entropy(preds: Tensor, targets: Tensor) -> ...:
     bs = preds.size()[0]
 
     # softmax
-    preds -= torch.max(preds, keepdim=True, dim=-1).values
+    preds -= reduce(preds, "bs ... vs -> bs ... 1", "max")
 
     num = torch.gather(preds, -1, targets.unsqueeze(1))
     denom = reduce(torch.exp(preds), "bs ... vc -> bs ... 1", "sum")
