@@ -11,15 +11,29 @@ from cs336_basics.rope import RotaryPositionalEmbedding
 
 class MultiheadSelfAttention(Module):
     def __init__(
-        self, d_model: int, num_heads: int, theta: float | None = None, max_seq_len: int | None = None
+        self,
+        d_model: int,
+        num_heads: int,
+        theta: float | None = None,
+        max_seq_len: int | None = None,
+        device: torch.device | None = None,
     ) -> None:
         super().__init__()
-        Q = torch.empty([d_model, d_model])
-        K = torch.empty([d_model, d_model])
-        V = torch.empty([d_model, d_model])
-        O = torch.empty([d_model, d_model])
+        Q = torch.empty([d_model, d_model], device=device)
+        K = torch.empty([d_model, d_model], device=device)
+        V = torch.empty([d_model, d_model], device=device)
+        O = torch.empty([d_model, d_model], device=device)
+
+        self.device = device
 
         self.num_heads = num_heads
+
+        sigma = (1 / d_model) ** 0.5
+
+        _ = torch.nn.init.trunc_normal_(Q, mean=0, std=sigma, a=-3 * sigma, b=3 * sigma)
+        _ = torch.nn.init.trunc_normal_(K, mean=0, std=sigma, a=-3 * sigma, b=3 * sigma)
+        _ = torch.nn.init.trunc_normal_(V, mean=0, std=sigma, a=-3 * sigma, b=3 * sigma)
+        _ = torch.nn.init.trunc_normal_(O, mean=0, std=sigma, a=-3 * sigma, b=3 * sigma)
 
         self.Q = Parameter(Q)
         self.K = Parameter(K)
@@ -42,7 +56,7 @@ class MultiheadSelfAttention(Module):
         k = rearrange(k, "... sl (num_heads d_k) -> ... num_heads sl d_k", num_heads=self.num_heads)
         v = rearrange(v, "... sl (num_heads d_k) -> ... num_heads sl d_k", num_heads=self.num_heads)
 
-        mask = torch.ones([sl, sl]).tril().to(torch.bool)
+        mask = torch.ones([sl, sl], device=self.device).tril().to(torch.bool)
 
         if self.rope is not None:
             if token_positions is None:

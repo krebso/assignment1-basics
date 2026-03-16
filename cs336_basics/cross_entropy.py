@@ -1,21 +1,20 @@
 import torch
+import math
 
 from torch import Tensor
-
-from cs336_basics.softmax import softmax
 
 from einops import reduce
 
 
-def cross_entropy(preds: Tensor, targets: Tensor) -> ...:
-    bs = preds.size()[0]
+def cross_entropy(preds: Tensor, targets: Tensor) -> Tensor:
+    targets = targets.to(preds.device)
 
     # softmax
-    preds -= reduce(preds, "bs ... vs -> bs ... 1", "max")
+    norm_preds = preds - reduce(preds, "... vs -> ... 1", "max")
 
-    num = torch.gather(preds, -1, targets.unsqueeze(1))
-    denom = reduce(torch.exp(preds), "bs ... vc -> bs ... 1", "sum")
+    num = torch.gather(norm_preds, -1, targets.unsqueeze(-1))
+    denom = reduce(torch.exp(norm_preds), "... vs -> ... 1", "sum")
 
     logs = -1 * (num - torch.log(denom))
 
-    return reduce(logs, "bs ... 1 -> ...", "sum") / bs
+    return reduce(logs, "... -> 1", "sum") / math.prod(preds.size()[:-1])

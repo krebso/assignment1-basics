@@ -22,4 +22,3 @@ def gradient_clipping(ps: Iterable[torch.nn.Parameter], max_l2_norm: float, eps:
                 continue
 
             p.grad.data *= scale
-

@@ -16,22 +16,21 @@ class Embedding(Module):
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
-        super().__init__()  # pyright: ignore[reportUnknownMemberType]
-
+        super().__init__()
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
-        self.device = device
         self.dtype = dtype
-
-        e = torch.empty([self.num_embeddings, self.embedding_dim], dtype=self.dtype)
-        _ = torch.nn.init.trunc_normal_(e, mean=0, std=1, a=-3, b=3)
+        e = torch.empty([num_embeddings, embedding_dim], dtype=dtype, device=device)
+        torch.nn.init.trunc_normal_(e, mean=0, std=1, a=-3, b=3)
         self.e = Parameter(e)
 
+    @property
+    def device(self):
+        return self.e.device  # always tracks wherever the parameter lives
+
     def _one_hot(self, token_ids: torch.LongTensor) -> torch.Tensor:
-        return (
-            torch.zeros(*token_ids.shape, self.num_embeddings, device=self.device, dtype=self.dtype)
-            .scatter_(LAST_DIM, token_ids.unsqueeze(LAST_DIM), 1.0)
-            .to(self.device)
+        return torch.zeros(*token_ids.shape, self.num_embeddings, device=self.device, dtype=self.dtype).scatter_(
+            LAST_DIM, token_ids.unsqueeze(LAST_DIM).to(self.device), 1.0
         )
 
     @override
@@ -40,4 +39,4 @@ class Embedding(Module):
             self._one_hot(token_ids),
             self.e,
             "... seq_length num_embeddings, num_embeddings embedding_dim -> ... seq_length embedding_dim",
-        ).to(self.device)
+        )

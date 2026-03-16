@@ -10,7 +10,7 @@ from einops import einsum
 
 @final
 class SwiGLU(Module):
-    def __init__(self, d_model: int, d_ff: int | None = None) -> None:
+    def __init__(self, d_model: int, d_ff: int | None = None, device: torch.device | None = None) -> None:
         super().__init__()
 
         self.d_model = d_model
@@ -19,9 +19,14 @@ class SwiGLU(Module):
 
         # assert self.d_ff % 64 == 0, self.d_ff
 
-        w1 = torch.empty([self.d_ff, self.d_model])
-        w2 = torch.empty([self.d_model, self.d_ff])
-        w3 = torch.empty([self.d_ff, self.d_model])
+        w1 = torch.empty([self.d_ff, self.d_model], device=device)
+        w2 = torch.empty([self.d_model, self.d_ff], device=device)
+        w3 = torch.empty([self.d_ff, self.d_model], device=device)
+
+        sigma = (1 / (d_model + self.d_ff)) ** 0.5
+        _ = torch.nn.init.trunc_normal_(w1, mean=0, std=sigma, a=-3 * sigma, b=3 * sigma)
+        _ = torch.nn.init.trunc_normal_(w2, mean=0, std=sigma, a=-3 * sigma, b=3 * sigma)
+        _ = torch.nn.init.trunc_normal_(w3, mean=0, std=sigma, a=-3 * sigma, b=3 * sigma)
 
         self.w1 = Parameter(w1)
         self.w2 = Parameter(w2)

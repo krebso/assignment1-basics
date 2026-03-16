@@ -1,4 +1,4 @@
-from typing import final, override
+from typing import final
 import torch
 from torch.nn import Module, Parameter
 from einops import einsum, reduce
@@ -14,9 +14,8 @@ class RMSNorm(Module):
         self.d_model = d_model
         self.eps = eps
 
-        self.g = Parameter(torch.ones(self.d_model))
+        self.g = Parameter(torch.ones(self.d_model, device=device))
 
-    @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         in_dtype = x.dtype
         upcast_x = x.to(torch.float32)
